@@ -7,7 +7,7 @@ import {
   CircleHelp, Download, RefreshCw
 } from "lucide-react";
 
-const const API = import.meta.env.VITE_API_URL || (import.meta.env.DEV ? "http://localhost:5000/api" : "/api");
+const API = import.meta.env.VITE_API_URL || (import.meta.env.DEV ? "http://localhost:5000/api" : "/api");
 const money = n => new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(Number(n || 0));
 const today = () => new Date().toISOString().slice(0, 10);
 const categories = ["Food", "Transport", "Shopping", "Bills", "Health", "Education", "Entertainment", "Home", "Income", "Freelance", "Other"];
