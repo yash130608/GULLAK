@@ -1,0 +1,23 @@
+{
+  "transactions": [
+    {
+      "id": "5ff44f73-9ffd-4e5f-9f9c-1540daeebf16",
+      "title": "1",
+      "amount": 20,
+      "type": "expense",
+      "category": "Food",
+      "date": "2026-11-02",
+      "note": ""
+    },
+    {
+      "id": "48288f5f-1ed0-4e90-9d04-25edd430dccc",
+      "title": "4",
+      "amount": 100,
+      "type": "income",
+      "category": "Income",
+      "date": "2026-11-02",
+      "note": ""
+    }
+  ],
+  "budget": 5000
+}
