@@ -7,7 +7,7 @@ import {
   CircleHelp, Download, RefreshCw
 } from "lucide-react";
 
-const API = import.meta.env.VITE_API_URL || (import.meta.env.DEV ? "http://localhost:5000/api" : "/api");
+const API = import.meta.env.VITE_API_URL || "/api";
 const money = n => new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(Number(n || 0));
 const today = () => new Date().toISOString().slice(0, 10);
 const categories = ["Food", "Transport", "Shopping", "Bills", "Health", "Education", "Entertainment", "Home", "Income", "Freelance", "Other"];
@@ -15,13 +15,58 @@ const icons = { Food: Coffee, Transport: Car, Shopping: ShoppingBag, Bills: Zap,
 const colors = ["#9b8cff", "#6dd9b0", "#f5b96b", "#71b7ff", "#ff8eaa", "#b5a7ff", "#78c8cf"];
 
 async function api(path, options = {}) {
-  const response = await fetch(`${API}${path}`, { headers: { "Content-Type": "application/json" }, ...options });
+  const response = await fetch(`${API}${path}`, { credentials: "include", headers: { "Content-Type": "application/json" }, ...options });
   const data = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(data.error || "Something went wrong.");
   return data;
 }
 
+
+function AuthScreen({ onAuthenticated }) {
+  const [mode, setMode] = useState("login");
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const submit = async e => {
+    e.preventDefault(); setBusy(true); setError("");
+    try {
+      const result = await api(mode === "login" ? "/auth/login" : "/auth/register", {
+        method: "POST",
+        body: JSON.stringify({ name, email, password })
+      });
+      onAuthenticated(result.user);
+    } catch (err) { setError(err.message); }
+    finally { setBusy(false); }
+  };
+  return <div className="auth-shell">
+    <div className="auth-card">
+      <div className="auth-brand"><span className="brand-mark"><Wallet size={21}/></span><span>Gullak</span></div>
+      <div className="auth-kicker"><span className="eyebrow-dot"/> YOUR MONEY, YOUR CONTROL</div>
+      <h1>{mode === "login" ? "Welcome back." : "Create your account."}</h1>
+      <p className="auth-subtitle">{mode === "login" ? "Log in to your personal money workspace." : "A clearer view of your money starts here."}</p>
+      <div className="auth-tabs">
+        <button type="button" className={mode === "login" ? "selected" : ""} onClick={() => {setMode("login");setError("");}}>Log in</button>
+        <button type="button" className={mode === "register" ? "selected" : ""} onClick={() => {setMode("register");setError("");}}>Create account</button>
+      </div>
+      <form onSubmit={submit}>
+        {mode === "register" && <label className="field-label">Your name<input autoComplete="name" required minLength="2" maxLength="60" value={name} onChange={e=>setName(e.target.value)} placeholder="Enter your name"/></label>}
+        <label className="field-label">Email address<input type="email" autoComplete="email" required maxLength="254" value={email} onChange={e=>setEmail(e.target.value)} placeholder="you@example.com"/></label>
+        <label className="field-label">Password<input type="password" autoComplete={mode === "login" ? "current-password" : "new-password"} required minLength={mode === "register" ? 10 : 1} maxLength="72" value={password} onChange={e=>setPassword(e.target.value)} placeholder={mode === "register" ? "At least 10 characters" : "Enter your password"}/></label>
+        {mode === "register" && <p className="password-hint">Use at least 10 characters. Your password is securely hashed before storage.</p>}
+        {error && <div className="auth-error" role="alert">{error}</div>}
+        <button className="primary-button auth-submit" disabled={busy}>{busy ? "Please wait…" : mode === "login" ? "Log in to Gullak" : "Create my account"} <ArrowUpRight size={16}/></button>
+      </form>
+      <p className="auth-privacy">Your account is private. Your transactions and budget are kept separate from other accounts.</p>
+    </div>
+    <div className="auth-footer">© 2026 Gullak · Built for better money habits</div>
+  </div>;
+}
+
 function App() {
+  const [authUser, setAuthUser] = useState(null);
+  const [authLoading, setAuthLoading] = useState(true);
   const [transactions, setTransactions] = useState([]);
   const [budget, setBudget] = useState(null);
   const [insights, setInsights] = useState([]);
@@ -48,7 +93,25 @@ function App() {
     } catch (e) { setError(`${e.message} Make sure the backend is running on port 5000.`); }
     finally { setLoading(false); }
   };
-  useEffect(() => { refresh(); }, []);
+  useEffect(() => {
+    api("/auth/me")
+      .then(result => { setAuthUser(result.user); })
+      .catch(() => { setAuthUser(null); setLoading(false); })
+      .finally(() => setAuthLoading(false));
+  }, []);
+  useEffect(() => { if (authUser) refresh(); }, [authUser?.id]);
+
+  const handleAuthenticated = user => { setAuthUser(user); setError(""); };
+  const logout = async () => {
+    try { await api("/auth/logout", { method: "POST" }); }
+    finally {
+      setAuthUser(null); setTransactions([]); setBudget(null); setInsights([]);
+      setActiveNav("Overview");
+    }
+  };
+
+  if (authLoading) return <div className="auth-loading"><div className="brand-mark"><Wallet size={21}/></div><span>Opening your Gullak…</span></div>;
+  if (!authUser) return <AuthScreen onAuthenticated={handleAuthenticated}/>;
 
   const now = new Date();
   const monthKey = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}`;
@@ -113,7 +176,7 @@ function App() {
       <div className="sidebar-bottom">
         <div className="upgrade-card"><div className="upgrade-icon"><Sparkles size={17}/></div><strong>Your money, in focus.</strong><p>Small insights. Smarter habits.</p><span className="upgrade-pill">SMART INSIGHTS</span></div>
         <button className="nav-item muted-nav"><Settings size={18}/><span>Settings</span></button>
-        <div className="profile"><div className="avatar">Y</div><div className="profile-copy"><strong>Your account</strong><span>Personal workspace</span></div><MoreHorizontal size={18} className="profile-more"/></div>
+        <div className="profile"><div className="avatar">{(authUser.name || "U").slice(0,1).toUpperCase()}</div><div className="profile-copy"><strong>{authUser.name}</strong><span>{authUser.email}</span></div><button className="logout-button" onClick={logout} title="Log out">Log out</button></div>
       </div>
     </aside>
 
@@ -121,11 +184,11 @@ function App() {
       <header className="topbar">
         <button className="mobile-menu" onClick={()=>setMobileMenu(!mobileMenu)}><Menu size={21}/></button>
         <div className="breadcrumb">Workspace <span>/</span> <strong>{activeNav}</strong></div>
-        <div className="top-actions"><div className="date-chip"><CalendarDays size={15}/>{now.toLocaleDateString("en-IN",{day:"2-digit",month:"short",year:"numeric"})}</div><button className="icon-button" title="Refresh" onClick={refresh}><RefreshCw size={17}/></button><button className="icon-button notification" title="Notifications"><Bell size={17}/><i/></button><div className="top-avatar">Y</div></div>
+        <div className="top-actions"><div className="date-chip"><CalendarDays size={15}/>{now.toLocaleDateString("en-IN",{day:"2-digit",month:"short",year:"numeric"})}</div><button className="icon-button" title="Refresh" onClick={refresh}><RefreshCw size={17}/></button><button className="icon-button notification" title="Notifications"><Bell size={17}/><i/></button><div className="top-avatar">{(authUser.name || "U").slice(0,1).toUpperCase()}</div></div>
       </header>
 
       <div className="content">
-        <section className="welcome-row"><div><div className="eyebrow"><span className="eyebrow-dot"/> YOUR FINANCIAL OVERVIEW</div><h1>Good to see you<span className="wave">.</span></h1><p className="subtitle">Here's what's happening with your money.</p></div><button className="primary-button" onClick={openNew}><Plus size={18}/> Add transaction</button></section>
+        <section className="welcome-row"><div><div className="eyebrow"><span className="eyebrow-dot"/> YOUR FINANCIAL OVERVIEW</div><h1>Good to see you, {authUser.name.split(" ")[0]}<span className="wave">.</span></h1><p className="subtitle">Here's what's happening with your money.</p></div><button className="primary-button" onClick={openNew}><Plus size={18}/> Add transaction</button></section>
         {error&&<div className="error-banner"><CircleHelp size={17}/><span>{error}</span><button onClick={()=>setError("")}><X size={16}/></button></div>}
         {loading&&<div className="loading-line"><span/> Syncing your workspace…</div>}
 

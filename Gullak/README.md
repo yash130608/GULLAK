@@ -1,25 +1,30 @@
 # Gullak
 
-A premium, responsive personal money tracker built with React + Vite and Node.js + Express. The interface is designed for a clean, modern finance-app experience, with Indian Rupee formatting.
+A responsive personal money tracker built with React, Vite, Node.js, Express and PostgreSQL.
 
-## What works
-- Overview dashboard with monthly income, expenses, cash flow and savings rate
-- Add, edit and delete income/expense transactions
-- Search and filter transactions
-- Monthly budget setting and progress tracking
-- Spending category breakdown and six-month spending trend
-- Smart spending insights (built-in analysis works without an API key)
-- Optional Gemini-powered insights through the backend
+## Features
+- Account registration, login and logout
+- Passwords hashed with bcrypt
+- HTTP-only, signed session cookie (7-day expiry)
+- Per-user transaction and budget isolation
+- Add, edit, delete, search and filter transactions
+- Monthly budget, category breakdown and spending trend
+- Built-in spending insights; optional Gemini insights
 - CSV export
-- JSON-file persistence — no database setup required; fresh installs start with no transactions and no budget
-- Responsive desktop and mobile layout
+- Responsive desktop and mobile interface
 
 ## Requirements
-Install Node.js 18 or newer, then open this `Gullak` folder in VS Code.
+- Node.js 18+
+- PostgreSQL 14+ (local development) or a hosted PostgreSQL database (deployment)
 
-## Start Gullak on your computer
+## Local setup
 
-Run these commands in the VS Code terminal, one at a time:
+1. Open this `Gullak` folder in VS Code.
+2. Create a PostgreSQL database named `gullak`.
+3. Copy `server/.env.example` to `server/.env`.
+4. Set `DATABASE_URL` to your PostgreSQL connection string.
+5. Set `JWT_SECRET` to a private random value of at least 32 characters. Do not commit `.env`.
+6. In the project terminal, run:
 
 ```bash
 npm install
@@ -27,42 +32,28 @@ npm run install:all
 npm run dev
 ```
 
-Then open **http://localhost:5173** in your browser.
+Open http://localhost:5173. The API runs on http://localhost:5000. The database tables are created automatically on first server start.
 
-- Frontend: http://localhost:5173
-- Backend API: http://localhost:5000/api
-- Health check: http://localhost:5000/api/health
+## Render deployment
 
-Keep the terminal running while using the app. Press `Ctrl + C` to stop it.
+Keep the existing Render Web Service and GitHub repository.
 
-## Optional AI insights
-Gullak works without an AI key. To enable Gemini-generated spending insights:
+- Root Directory: `Gullak` (or the directory containing this package.json in your repository)
+- Build Command: `npm install && npm run install:all && npm run build`
+- Start Command: `npm start`
 
-1. Copy `server/.env.example` to `server/.env`.
-2. Add your Gemini API key to `GEMINI_API_KEY`.
-3. Restart the backend.
+Create a PostgreSQL database in Render, then open the web service's **Environment** settings and add:
 
-Example:
+- `DATABASE_URL` = the PostgreSQL Internal Database URL from your Render database (use the External URL only if connecting from outside Render)
+- `JWT_SECRET` = a long, random secret of at least 32 characters
+- `NODE_ENV` = `production`
 
-```env
-PORT=5000
-GEMINI_API_KEY=your_api_key_here
-GEMINI_MODEL=gemini-2.0-flash
-```
+Save changes and redeploy. The app creates its tables automatically. Do not set `PGSSL=disable` on Render.
 
-Keep the API key in the backend `.env` file only. Never add it to frontend code or upload it to GitHub.
+## Important data note
 
-## Production build
+This version uses PostgreSQL, not the old shared `server/data.json` file. Existing JSON-file records are intentionally not imported because the old file did not identify which account owned each record. Each new account starts with its own empty dashboard. Keep a private backup of any old data you need before replacing the deployed version.
 
-```bash
-npm run build
-npm start
-```
+## Security and scope
 
-The Express server serves the built frontend from `client/dist`.
-
-## Android app
-This version is a responsive web app. It works in a mobile browser. Android packaging with Capacitor can be added as a separate next step after confirming the web version works.
-
-## Important
-This is a learning/demo project, not a bank-connected service or financial adviser. The starter stores data in `server/data.json` and has no user login or multi-user isolation. Do not deploy it publicly with real financial data until authentication, per-user authorization, HTTPS, backups and production database storage are implemented.
+This is a learning project, not a bank-connected service or a financial adviser. It uses password hashing, HTTP-only session cookies, rate-limited login/register routes, and user-scoped database queries. Before handling sensitive or real financial records at scale, arrange an independent security review, configure database backups, and add account recovery and email verification. Never commit credentials or API keys.
